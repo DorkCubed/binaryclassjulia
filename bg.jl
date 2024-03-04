@@ -11,21 +11,19 @@ model = Chain(
     Dense(3, 6, leakyrelu),
     BatchNorm(6),
     Dropout(0.1),
-    Dense(6, 9, leakyrelu),
-    #BatchNorm(9),
-    #Dropout(0.1),
-    Dense(9, 3, leakyrelu),
+    Dense(6, 9, softplus),
+    Dense(9, 3, sigmoid),
     BatchNorm(3),
     Dropout(0.1),
     Dense(3, 1)
 ) |> gpu
 model = f64(model)
 
-loss(model, x, y) = mean(Flux.Losses.logitbinarycrossentropy.(model(x), y))
+loss(model, x, y) = mean(lgf(model, x, y))
 
 function lgf(model, x, y)
-    k = abs2.(model(x))
-    return Flux.Losses.logitbinarycrossentropy.(k, y)
+    k = Flux.Losses.logitbinarycrossentropy.(model(x), y)
+    return sqrt.(k)
 end
 
 function x_train(df, a, sz)
@@ -50,10 +48,10 @@ function y_train(df, a, sz)
 end
 
 function training(model, df, lim, opt)
-    for epoch in 1:5
+    for epoch in 1:2
         
         a = 1
-        sz = 1500
+        sz = 20
 
         while sz < lim
             y = y_train(df, a, sz)
@@ -61,15 +59,15 @@ function training(model, df, lim, opt)
             data = [(x, y)] |> gpu
             train!(loss, model, data, opt)
             
-            a = a + 1500
-            sz = sz + 1500
+            a = a + 20
+            sz = sz + 20
         end
 
     end
 end
 
-opt2 = Flux.setup(Descent(0.5), model)
-opt = Flux.setup(ADAM(0.1), model)
+opt = Flux.setup(Descent(0.05), model)
+opt2 = Flux.setup(Adam(0.001), model)
 
 x = x_train(df, 1, 1000) |> gpu
 y = y_train(df, 1, 1000) |> gpu
