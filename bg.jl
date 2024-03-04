@@ -8,7 +8,7 @@ df = DataFrame(CSV.File("dataset.csv"))
 lim = size(df)[1]
 
 model = Chain(
-    Dense(5, 10, leakyrelu),
+    Dense(4, 10, tanh),
     BatchNorm(10),
     Dropout(0.1),
     Dense(10, 15, softplus),
@@ -23,20 +23,40 @@ loss(model, x, y) = mean(lgf(model, x, y))
 
 function lgf(model, x, y)
     k = Flux.Losses.logitbinarycrossentropy.(model(x), y)
-    return sqrt.(k)
+    return ((sqrt.(k)) .* 100)
+end
+
+function sdf(df)
+    sdf = DataFrame()
+    for i in 1:size(df)[1]
+        class = df[i, 4]
+        if class == "s"
+            sdf = vcat(sdf, [df[i, :]])
+        end
+    end
+    return sdf
+end
+
+function bdf(df)
+    bdf = DataFrame()
+    for i in 1:size(df)[1]
+        class = df[i, 4]
+        if class == "b"
+            bdf = vcat(bdf, [df[i, :]])
+        end
+    end
+    return bdf
 end
 
 function x_train(df, a, sz)
-    tempa = hypot(df[a, 2], df[a, 3])
-    tempb = (hypot(df[a, 2], df[a, 3]) - df[a, 1])
-    x_train = [df[a, 1], df[a, 2], df[a, 3], tempa, tempb]
+    tempa = hypot((df[a, 1] - 0.5), (df[a, 2] - 0.5), (df[a, 3] - 0.5))
+    x_train = [df[a, 1], df[a, 2], df[a, 3], tempa]
 
     b = a + 1
 
     for i in b:sz
-        tempa = hypot(df[i, 2], df[i, 3])
-        tempb = hypot(df[i, 1], df[i, 2], df[i, 3])
-        x_train = hcat(x_train, [df[i, 1], df[i, 2], df[i, 3], tempa, tempb])
+        tempa = hypot((df[i, 1] - 0.5), (df[i, 2] - 0.5), (df[i, 3] - 0.5))
+        x_train = hcat(x_train, [df[i, 1], df[i, 2], df[i, 3], tempa])
     end
 
     return x_train
