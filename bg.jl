@@ -8,11 +8,11 @@ df = DataFrame(CSV.File("dataset.csv"))
 lim = size(df)[1]
 
 model = Chain(
-    Dense(3, 6, leakyrelu),
-    BatchNorm(6),
+    Dense(5, 10, leakyrelu),
+    BatchNorm(10),
     Dropout(0.1),
-    Dense(6, 9, softplus),
-    Dense(9, 3, sigmoid),
+    Dense(10, 15, softplus),
+    Dense(15, 3, sigmoid),
     BatchNorm(3),
     Dropout(0.1),
     Dense(3, 1)
@@ -27,12 +27,16 @@ function lgf(model, x, y)
 end
 
 function x_train(df, a, sz)
-    x_train = [df[a, 1], df[a, 2], df[a, 3]]
+    tempa = hypot(df[a, 2], df[a, 3])
+    tempb = (hypot(df[a, 2], df[a, 3]) - df[a, 1])
+    x_train = [df[a, 1], df[a, 2], df[a, 3], tempa, tempb]
 
     b = a + 1
 
     for i in b:sz
-        x_train = hcat(x_train, [df[i, 1], df[i, 2], df[i, 3]])
+        tempa = hypot(df[i, 2], df[i, 3])
+        tempb = hypot(df[i, 1], df[i, 2], df[i, 3])
+        x_train = hcat(x_train, [df[i, 1], df[i, 2], df[i, 3], tempa, tempb])
     end
 
     return x_train
@@ -51,7 +55,7 @@ function training(model, df, lim, opt)
     for epoch in 1:2
         
         a = 1
-        sz = 20
+        sz = 50
 
         while sz < lim
             y = y_train(df, a, sz)
@@ -59,8 +63,8 @@ function training(model, df, lim, opt)
             data = [(x, y)] |> gpu
             train!(loss, model, data, opt)
             
-            a = a + 20
-            sz = sz + 20
+            a = a + 50
+            sz = sz + 50
         end
 
     end
