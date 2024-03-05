@@ -1,21 +1,22 @@
-using CSV, DataFrames, Flux, Statistics, CUDA
+using CSV, DataFrames, Flux, Statistics, CUDA, Random, ProgressMeter
 using Flux: train!
 
 # Read the CSV file
 df = DataFrame(CSV.File("dataset.csv"))
 # Now df is a DataFrame containing the data from the CSV file
 
-lim = size(df)[1]
-
 model = Chain(
     Dense(4, 16, leakyrelu),
     BatchNorm(16),
     Dropout(0.1),
-    Dense(16, 12, leakyrelu),
-    Dense(12, 3, tanh),
+    Dense(16, 20, tanh),
+    Dropout(0.2),
+    Dense(20, 12, leakyrelu),
+    BatchNorm(12),
+    Dropout(0.3),
+    Dense(12, 3, sigmoid),
     BatchNorm(3),
-    Dropout(0.1),
-    Dense(3, 1, sigmoid)
+    Dense(3, 1)
 ) |> gpu
 model = f64(model)
 
@@ -31,7 +32,8 @@ function sdf(df)
     for i in 1:size(df)[1]
         class = df[i, 4]
         if class == "s"
-            sdf = vcat(sdf, [df[i, :]])
+            temp = DataFrame([df[i, :]])
+            sdf = vcat(sdf, temp)
         end
     end
     return sdf
@@ -42,16 +44,18 @@ function bdf(df)
     for i in 1:size(df)[1]
         class = df[i, 4]
         if class == "b"
-            bdf = vcat(bdf, [df[i, :]])
+            temp = DataFrame([df[i, :]])
+            bdf = vcat(bdf, temp)
         end
     end
     return bdf
 end
 
 function x_train(df, a, sz)
+    
     tempa = hypot((df[a, 1] - 0.5), (df[a, 2] - 0.5), (df[a, 3] - 0.5))
     x_train = [df[a, 1], df[a, 2], df[a, 3], tempa]
-
+    
     b = a + 1
 
     for i in b:sz
@@ -71,42 +75,39 @@ function y_train(df, a, sz)
     return y
 end
 
-function training(model, df, lim, opt)
-    for epoch in 1:5
-        
-        a = 1
-        sz = 50
+function giverand(vec, batchsize, sorb)
+    random_indices = rand(1:size(vec, 2), batchsize) |> gpu
+    random_batch = vec[:, random_indices] |> gpu
 
-        while sz < lim
-            y = y_train(df, a, sz)
-            x = x_train(df, a, sz)
-            data = [(x, y)] |> gpu
-            train!(loss, model, data, opt)
-            
-            a = a + 50
-            sz = sz + 50
-        end
+    ans = CuArray{Float64}(undef, 0)
+    ans = fill(sorb == 0 ? 0f0 : 1f0, batchsize) |> gpu
 
-    end
+    random_batch = vcat(random_batch, (ans'))
+    return random_batch
 end
 
-function generating(model, df, lim)        
-    a = 1
-    y = DataFrame()
+function training(model, df, opt)
+    
+    df_s = sdf(df) |> gpu
+    df_b = bdf(df) |> gpu
 
-    while a < lim
-        tempa = hypot((df[a, 1] - 0.5), (df[a, 2] - 0.5), (df[a, 3] - 0.5))
-        x = hcat([df[a, 1], df[a, 2], df[a, 3], tempa]) |> gpu
-        tempb = model(x) |> gpu
-        tempb = tempb |> cpu 
-        tempb = tempb[1]
-        tempb = Float64(tempb)
-        tempb = DataFrame(A = [Float64(tempb)])
-        y = vcat(y, tempb)
-        a = a + 1
+    x_s = x_train(df_s, 1, (size(df_s)[1])) |> gpu
+    x_b = x_train(df_b, 1, (size(df_b)[1])) |> gpu
+
+
+    @showprogress for epoch in 1:10000
+        rands = giverand(x_s, rand(200:250), 1)
+        randb = giverand(x_b, rand(200:250), 0)
+        rando = hcat(rands, randb) |> gpu
+
+        indices = shuffle(1:size(rando, 2)) |> gpu
+        rando = rando[:, indices]
+
+        data = [(rando[1:4, :], rando[5, :])]  |> gpu
+
+        train!(loss, model, data, opt) |> gpu
     end
 
-    CSV.write("generated.csv", DataFrame(y), writeheader=false)
 end
 
 opt = Flux.setup(Descent(0.05), model)
@@ -117,9 +118,9 @@ y = y_train(df, 1, 1000) |> gpu
 
 println("Initial loss on test data: ", loss(model, x, y))
 
-#training(model, df, lim, opt)
-training(model, df, lim, opt2)
+#training(model, df, opt)
+training(model, df, opt2)
 
 println("Loss on test data: $(loss(model, x, y))")
 
-generating(model, df, lim)
+#generating(model, df, lim)
