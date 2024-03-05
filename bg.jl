@@ -8,14 +8,14 @@ df = DataFrame(CSV.File("dataset.csv"))
 lim = size(df)[1]
 
 model = Chain(
-    Dense(4, 10, tanh),
-    BatchNorm(10),
+    Dense(4, 16, leakyrelu),
+    BatchNorm(16),
     Dropout(0.1),
-    Dense(10, 15, softplus),
-    Dense(15, 3, sigmoid),
+    Dense(16, 12, leakyrelu),
+    Dense(12, 3, sigmoid),
     BatchNorm(3),
     Dropout(0.1),
-    Dense(3, 1)
+    Dense(3, 1, sigmoid)
 ) |> gpu
 model = f64(model)
 
@@ -23,7 +23,7 @@ loss(model, x, y) = mean(lgf(model, x, y))
 
 function lgf(model, x, y)
     k = Flux.Losses.logitbinarycrossentropy.(model(x), y)
-    return ((sqrt.(k)) .* 100)
+    return k
 end
 
 function sdf(df)
@@ -72,7 +72,7 @@ function y_train(df, a, sz)
 end
 
 function training(model, df, lim, opt)
-    for epoch in 1:2
+    for epoch in 1:5
         
         a = 1
         sz = 50
@@ -90,6 +90,25 @@ function training(model, df, lim, opt)
     end
 end
 
+function generating(model, df, lim)        
+    a = 1
+    y = DataFrame()
+
+    while a < lim
+        tempa = hypot((df[a, 1] - 0.5), (df[a, 2] - 0.5), (df[a, 3] - 0.5))
+        x = hcat([df[a, 1], df[a, 2], df[a, 3], tempa]) |> gpu
+        tempb = model(x) |> gpu
+        tempb = tempb |> cpu 
+        tempb = tempb[1]
+        tempb = Float64(tempb)
+        tempb = DataFrame(A = [Float64(tempb)])
+        y = vcat(y, tempb)
+        a = a + 1
+    end
+
+    CSV.write("generated.csv", DataFrame(y), writeheader=false)
+end
+
 opt = Flux.setup(Descent(0.05), model)
 opt2 = Flux.setup(Adam(0.001), model)
 
@@ -98,7 +117,9 @@ y = y_train(df, 1, 1000) |> gpu
 
 println("Initial loss on test data: ", loss(model, x, y))
 
-training(model, df, lim, opt)
+#training(model, df, lim, opt)
 training(model, df, lim, opt2)
 
 println("Loss on test data: $(loss(model, x, y))")
+
+generating(model, df, lim)
