@@ -20,7 +20,7 @@ model = Chain(
 ) |> gpu
 model = f64(model)
 
-loss(model, x, y) = Flux.logitbinarycrossentropy(model(x), y')
+loss(model, x, y) = Flux.binarycrossentropy(model(x), y')
 
 function sdf(df)
     sdf = DataFrame()
