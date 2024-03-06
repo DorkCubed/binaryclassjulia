@@ -3,7 +3,7 @@ using Flux: train!
 
 # Read the CSV file
 df = DataFrame(CSV.File("dataset.csv"))
-# Now df is a DataFrame containing the data from the CSV file
+lim = size(df)[1]
 
 model = Chain(
     Dense(4, 16, leakyrelu),
@@ -19,25 +19,6 @@ model = Chain(
     Dense(3, 1, sigmoid)
 ) |> gpu
 model = f64(model)
-
-function generating(model, df, lim)        
-    a = 1
-    y = DataFrame()
-
-    while a < lim
-        tempa = hypot((df[a, 1] - 0.5), (df[a, 2] - 0.5), (df[a, 3] - 0.5))
-        x = hcat([df[a, 1], df[a, 2], df[a, 3], tempa]) |> gpu
-        tempb = model(x) |> gpu
-        tempb = tempb |> cpu 
-        tempb = tempb[1]
-        tempb = Float64(tempb)
-        tempb = DataFrame(A = [Float64(tempb)])
-        y = vcat(y, tempb)
-        a = a + 1
-    end
-
-    CSV.write("generated.csv", DataFrame(y), writeheader=false)
-end
 
 loss(model, x, y) = Flux.logitbinarycrossentropy(model(x), y')
 
@@ -116,13 +97,33 @@ function training(model, x_s, x_b, opt)
 
 end
 
-opt = Flux.setup(Adam(1e-4), model)
-opt2 = Flux.setup(RMSProp(0.005), model)
+function check(model, x, y)
+    ans = model(x) |> gpu
+    ans = round.(ans)
+    ans = ans .- y'
+    co = count(ans .== 0) |> gpu
+    return co
+end
 
-x = x_train(df, 1, 1000) |> gpu
-y = y_train(df, 1, 1000) |> gpu
+function datacheck(model, df, lim, batchsize)
+    i = 1
+    accuracy = 0
+    while i + batchsize <= lim
+        xch = x_train(df, i, i + batchsize) |> gpu
+        ych = y_train(df, i, i + batchsize) |> gpu
 
-println("Initial loss on test data: ", loss(model, x, y))
+        co = check(model, xch, ych) / batchsize
+        accuracy = accuracy + co
+        accuracy = accuracy / 2
+
+        i = i + batchsize
+    end
+
+    return accuracy
+end
+
+opt = Flux.setup(RMSProp(0.005), model)
+opt2 = Flux.setup(Adam(1e-4), model)
 
 df_s = sdf(df) |> gpu
 df_b = bdf(df) |> gpu
@@ -130,9 +131,9 @@ df_b = bdf(df) |> gpu
 x_s = x_train(df_s, 1, (size(df_s)[1])) |> gpu
 x_b = x_train(df_b, 1, (size(df_b)[1])) |> gpu
 
+println("Initial accuracy is ", string(Float16(datacheck(model, df, lim, 1000) * 100)), "%")
+
 training(model, x_s, x_b, opt)
 training(model, x_s, x_b, opt2)
 
-println("Loss on test data: $(loss(model, x, y))")
-
-generating(model, df, size(df)[1])
+println("Trained accuracy is ", string(Float16(datacheck(model, df, lim, 1000) * 100)), "%")
