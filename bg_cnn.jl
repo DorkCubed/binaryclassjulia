@@ -1,4 +1,4 @@
-using CSV, DataFrames, Flux, Statistics, CUDA, Random, ProgressMeter
+using CSV, DataFrames, Flux, CUDA, Random, ProgressMeter
 using Flux: train!
 
 # Read the CSV file
@@ -9,23 +9,37 @@ model = Chain(
     Dense(4, 16, leakyrelu),
     BatchNorm(16),
     Dropout(0.1),
-    Dense(16, 20, tanh),
+    Dense(16, 32, tanh),
     Dropout(0.2),
-    Dense(20, 12, leakyrelu),
+    Dense(32, 12, leakyrelu),
     BatchNorm(12),
     Dropout(0.3),
     Dense(12, 3, sigmoid),
     BatchNorm(3),
-    Dense(3, 1)
+    Dense(3, 1, sigmoid)
 ) |> gpu
 model = f64(model)
 
-loss(model, x, y) = mean(lgf(model, x, y))
+function generating(model, df, lim)        
+    a = 1
+    y = DataFrame()
 
-function lgf(model, x, y)
-    k = Flux.Losses.logitbinarycrossentropy.(model(x), y)
-    return k
+    while a < lim
+        tempa = hypot((df[a, 1] - 0.5), (df[a, 2] - 0.5), (df[a, 3] - 0.5))
+        x = hcat([df[a, 1], df[a, 2], df[a, 3], tempa]) |> gpu
+        tempb = model(x) |> gpu
+        tempb = tempb |> cpu 
+        tempb = tempb[1]
+        tempb = Float64(tempb)
+        tempb = DataFrame(A = [Float64(tempb)])
+        y = vcat(y, tempb)
+        a = a + 1
+    end
+
+    CSV.write("generated.csv", DataFrame(y), writeheader=false)
 end
+
+loss(model, x, y) = Flux.logitbinarycrossentropy(model(x), y')
 
 function sdf(df)
     sdf = DataFrame()
@@ -86,18 +100,10 @@ function giverand(vec, batchsize, sorb)
     return random_batch
 end
 
-function training(model, df, opt)
-    
-    df_s = sdf(df) |> gpu
-    df_b = bdf(df) |> gpu
-
-    x_s = x_train(df_s, 1, (size(df_s)[1])) |> gpu
-    x_b = x_train(df_b, 1, (size(df_b)[1])) |> gpu
-
-
+function training(model, x_s, x_b, opt)
     @showprogress for epoch in 1:10000
-        rands = giverand(x_s, rand(200:250), 1)
-        randb = giverand(x_b, rand(200:250), 0)
+        rands = giverand(x_s, rand(200:300), 1)
+        randb = giverand(x_b, rand(200:300), 0)
         rando = hcat(rands, randb) |> gpu
 
         indices = shuffle(1:size(rando, 2)) |> gpu
@@ -110,17 +116,23 @@ function training(model, df, opt)
 
 end
 
-opt = Flux.setup(Descent(0.05), model)
-opt2 = Flux.setup(Adam(0.001), model)
+opt = Flux.setup(Adam(1e-4), model)
+opt2 = Flux.setup(RMSProp(0.005), model)
 
 x = x_train(df, 1, 1000) |> gpu
 y = y_train(df, 1, 1000) |> gpu
 
 println("Initial loss on test data: ", loss(model, x, y))
 
-#training(model, df, opt)
-training(model, df, opt2)
+df_s = sdf(df) |> gpu
+df_b = bdf(df) |> gpu
+
+x_s = x_train(df_s, 1, (size(df_s)[1])) |> gpu
+x_b = x_train(df_b, 1, (size(df_b)[1])) |> gpu
+
+training(model, x_s, x_b, opt)
+training(model, x_s, x_b, opt2)
 
 println("Loss on test data: $(loss(model, x, y))")
 
-#generating(model, df, lim)
+generating(model, df, size(df)[1])
