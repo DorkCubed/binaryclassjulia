@@ -12,7 +12,7 @@ model = Chain(
     BatchNorm(16),
     Dropout(0.1),
     Dense(16, 12, leakyrelu),
-    Dense(12, 3, sigmoid),
+    Dense(12, 3, tanh),
     BatchNorm(3),
     Dropout(0.1),
     Dense(3, 1, sigmoid)
