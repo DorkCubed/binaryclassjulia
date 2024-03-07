@@ -25,3 +25,4 @@ The architecture of the model is quite simple, consisting of 5 layers, an increa
 * Layer 3 - This layer has 32 inputs and 12 outputs. This layer follows the `tanh` with a `leakyReLU` function, providing the `leakyReLU` with balanced inputs and greatly reduces the influence of the negative outputs of the `tanh` layer. This is followed by normalization using `batchnorm`.
 * Layer 4 - This layer has 12 inputs and 3 outputs - This layer both exists for a gradual reduction in parameters and as the first `sigmoid` function. It outputs a value which is then normalized using `batchnorm`.
 * Layer 5 - The final layer goes from 3 inputs to a single output. This layer has a `sigmoid` function, the output of which can be compared with the output of the binary classification task. 
+#### Training
