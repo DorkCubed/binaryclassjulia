@@ -16,4 +16,12 @@ Thus, the data preprocessing involved several steps -
 
 The data is now ready to train the model with!
 ***
-### Training the model
+### The model
+#### Architecture
+The architecture of the model is quite simple, consisting of 5 layers, an increasing dropout rate and normalization across the leaky ReLU layers. I will provide more details below, but I must confess that most of it is intuition and experimentation rather than the theoretical “best”.
+
+* Layer 1 - The first layer has 4 inputs and 16 outputs. I avoided giving too high of an output number to avoid overfitting and ease the computational workload. The layer uses the `leakyReLU` activation function to avoid the problems ReLU might have with a non-normalized database. The layer is then normalized using `batchnorm`. This is followed by a `dropout` rate of 0.1 for overfitting protection.
+* Layer 2 - This layer has 16 inputs and 32 outputs. This layer was added when 16 layers failed to provide me with a satisfactory loss. This layer uses `tanh` as it both normalizes the data and seems to provide the best results so far. This layer has a `dropout` rate of 0.2.
+* Layer 3 - This layer has 32 inputs and 12 outputs. This layer follows the `tanh` with a `leakyReLU` function, providing the `leakyReLU` with balanced inputs and greatly reduces the influence of the negative outputs of the `tanh` layer. This is followed by normalization using `batchnorm`.
+* Layer 4 - This layer has 12 inputs and 3 outputs - This layer both exists for a gradual reduction in parameters and as the first `sigmoid` function. It outputs a value which is then normalized using `batchnorm`.
+* Layer 5 - The final layer goes from 3 inputs to a single output. This layer has a `sigmoid` function, the output of which can be compared with the output of the binary classification task. 
