@@ -26,3 +26,14 @@ The architecture of the model is quite simple, consisting of 5 layers, an increa
 * Layer 4 - This layer has 12 inputs and 3 outputs - This layer both exists for a gradual reduction in parameters and as the first `sigmoid` function. It outputs a value which is then normalized using `batchnorm`.
 * Layer 5 - The final layer goes from 3 inputs to a single output. This layer has a `sigmoid` function, the output of which can be compared with the output of the binary classification task. 
 #### Training
+The training is done via the `train!` function of the flux library. The `binarycrossentropy` function is the go-to loss function for a binary classification task, and seemed to provide me with the best results. The only bit of uniqueness in this part comes from my decision to train the model twice using two different optimization algorithms.
+
+First, the model is trained via `RMSProp` at a high learning rate of 5e-3. This is both to avoid a bias towards 0 that `Adam` might create and to create a smoother learning curve.
+
+Then, the model is trained via `Adam` at a slower learning rate of 1e-4. This now helps the model to possibly settle at a better solution and makes convergence faster.
+
+So far, this seems to allow the model to achieve better performance than doubling the number of epochs with one algorithm.
+
+The model is now ready to test!
+***
+### Evaluation
