@@ -37,3 +37,14 @@ So far, this seems to allow the model to achieve better performance than doublin
 The model is now ready to test!
 ***
 ### Evaluation
+
+There are two evaluation functions in the code - 
+
+#### Check 
+The `check` function takes two input matrices - one of the data from the `x_train` function and the other one with its solutions from the `y_train` function. It then gets the model’s predictions and rounds them to the nearest integer. Next, the solution matrix is subtracted from the predicted matrix. The number of 0s in this matrix, divided by the number of elements, is the accuracy of the model over the input data.
+
+#### Datacheck
+This function checks the accuracy of the dataset by calling the `check` function over batches of size `batchsize` at a time. This is then repeated over the entire dataset to obtain the (sum of the) accuracy of each batch. This accuracy is then averaged at the end.
+
+The maximum accuracy of the model is around 97%!
+
