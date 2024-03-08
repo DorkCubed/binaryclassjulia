@@ -113,11 +113,11 @@ function datacheck(model, df, lim, batchsize)
 
         co = check(model, xch, ych) / batchsize
         accuracy = accuracy + co
-        accuracy = accuracy / 2
 
         i = i + batchsize
     end
 
+    accuracy = accuracy / (lim / batchsize)
     return accuracy
 end
 

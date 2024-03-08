@@ -12,7 +12,7 @@ Thus, the data preprocessing involved several steps -
     * Splitting the dataframe from the `a`th element to the `sz`th element.
 * Getting a random batch of coordinates from the vector and appending the answers to it. The `giverand` function achieves this. 
     * At this point, there’s no need to read the class of the coordinates from the dataframe (which is very slow), as they have already been split according to it. The class is appended to the random matrix based on the `sorb` input to the `giverand` function.
-* Two matrices - one of "s" type, which has a random number of elements between 200 and 300, and another of "b" type, also with a random size, are joined and then shuffled. This is done within the training function itself.
+* Two matrices - one of "s" type, which has a random number of elements between 200 and 300, and another of "b" type, also with a random size, are joined and then shuffled. This is done within the `training` function itself.
 
 The data is now ready to train the model with!
 ***
@@ -26,7 +26,7 @@ The architecture of the model is quite simple, consisting of 5 layers, an increa
 * Layer 4 - This layer has 12 inputs and 3 outputs - This layer both exists for a gradual reduction in parameters and as the first `sigmoid` function. It outputs a value which is then normalized using `batchnorm`.
 * Layer 5 - The final layer goes from 3 inputs to a single output. This layer has a `sigmoid` function, the output of which can be compared with the output of the binary classification task. 
 #### Training
-The training is done via the `train!` function of the flux library. The `binarycrossentropy` function is the go-to loss function for a binary classification task, and seemed to provide me with the best results. The only bit of uniqueness in this part comes from my decision to train the model twice using two different optimization algorithms.
+The training is done within the `training` function via the `train!` function of the flux library. The `binarycrossentropy` function is the go-to loss function for a binary classification task, and seemed to provide me with the best results. The only bit of uniqueness in this part comes from my decision to train the model twice using two different optimization algorithms.
 
 First, the model is trained via `RMSProp` at a high learning rate of 5e-3. This is both to avoid a bias towards 0 that `Adam` might create and to create a smoother learning curve.
 
