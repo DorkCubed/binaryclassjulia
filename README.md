@@ -47,4 +47,3 @@ The `check` function takes two input matrices - one of the data from the `x_trai
 This function checks the accuracy of the dataset by calling the `check` function over batches of size `batchsize` at a time. This is then repeated over the entire dataset to obtain the (sum of the) accuracy of each batch. This accuracy is then averaged at the end.
 
 The maximum accuracy of the model is around 97%!
-
